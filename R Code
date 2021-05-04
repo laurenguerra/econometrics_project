@@ -1,0 +1,258 @@
+#Brought in libraries
+library(dplyr)
+library(openxlsx)
+library(ggplot2)
+library(scales)
+library(stringr)
+library(plotly)
+
+# Brought in all Drug deaths and Opioid Drug deaths from my files 
+library(readxl)
+all_ddeaths <- read_excel("~/R/EconProject/Figure1_all_Drug_Deaths.xls")
+opioid_deaths <- read_excel("~/R/EconProject/Figure1_Opioid_Drug_Deaths.xls")
+
+#clean for "all" drug deaths
+all_ddeaths$Notes <- NULL
+all_ddeaths$`State Code` <- NULL
+all_ddeaths$`Year Code`<- NULL
+all_ddeaths <- all_ddeaths[-c(17:71),]
+all_ddeaths <- all_ddeaths %>% rename(rate=4)
+
+#clean for Opioid drug deaths
+opioid_deaths$Notes <- NULL
+opioid_deaths$`State Code` <- NULL
+opioid_deaths$`Year Code`<- NULL
+opioid_deaths <- opioid_deaths[-c(17:71),]
+opioid_deaths <- opioid_deaths %>% dplyr::rename(opioid_rate=4)
+
+
+#graphing for all drug deaths from 1999-2014
+graph1 <- ggplot(data = all_ddeaths, aes(x= Year, y= rate, color = "All Drug Deaths")) +
+  geom_line(linetype = "dashed", size=1) +
+  ggtitle("Unemployment vs Drug Death Rates 1999-2014")
+
+#making X and Y axis to match the paper figure
+graph1 <- graph1 + scale_x_continuous(limits = c(1999,2014),  breaks=c(1999, 2000, 2001, 2002, 2003, 2004,
+                                                                       2005, 2006, 2007, 2008, 2009, 2010, 2011,
+                                                                       2012, 2013, 2014)) + 
+  scale_y_continuous(limits = c(0, 15))
+
+
+#adding in geomline for opioid deaths from 1999-2014
+graph1 <- graph1 + geom_line(size=1, data= opioid_deaths, aes(x= Year, y= opioid_rate, color = "opioid deaths"))
+
+#Bring in Unemployment Rates and clean
+Unemployment_Rate <- read_excel("~/R/econometrics_project/Figure1_Uneployment_Rate.xlsx")
+Unemployment_Rate <-Unemployment_Rate[-c(1:11),]
+Unemployment_Rate <- Unemployment_Rate %>% dplyr:: rename(Year=1)
+Unemployment_Rate <- Unemployment_Rate %>% dplyr:: rename("Jan."=2)
+Unemployment_Rate <- Unemployment_Rate %>% dplyr:: rename("Feb."=3)
+Unemployment_Rate <- Unemployment_Rate %>% dplyr:: rename("March"=4)
+Unemployment_Rate <- Unemployment_Rate %>% dplyr:: rename("Apr."=5)
+Unemployment_Rate <- Unemployment_Rate %>% dplyr:: rename("May"=6)
+Unemployment_Rate <- Unemployment_Rate %>% dplyr:: rename("June"=7)
+Unemployment_Rate <- Unemployment_Rate %>% dplyr:: rename("July"=8)
+Unemployment_Rate <- Unemployment_Rate %>% dplyr:: rename("Aug."=9)
+Unemployment_Rate <- Unemployment_Rate %>% dplyr:: rename("Sept."=10)
+Unemployment_Rate <- Unemployment_Rate %>% dplyr:: rename("Oct."=11)
+Unemployment_Rate <- Unemployment_Rate %>% dplyr:: rename("Nov."=12)
+Unemployment_Rate <- Unemployment_Rate %>% dplyr:: rename("Dec."=13)
+
+#Change all the rows to integers...
+Unemployment_Rate$Jan. <- as.numeric(Unemployment_Rate$Jan.)
+Unemployment_Rate$Feb. <- as.numeric(Unemployment_Rate$Feb.)
+Unemployment_Rate$March <- as.numeric(Unemployment_Rate$March)
+Unemployment_Rate$Apr. <- as.numeric(Unemployment_Rate$Apr.)
+Unemployment_Rate$May <- as.numeric(Unemployment_Rate$May)
+Unemployment_Rate$June <- as.numeric((Unemployment_Rate$June))
+Unemployment_Rate$July <- as.numeric(Unemployment_Rate$July)
+Unemployment_Rate$Aug. <- as.numeric(Unemployment_Rate$Aug.)
+Unemployment_Rate$Sept.<- as.numeric(Unemployment_Rate$Sept.)
+Unemployment_Rate$Oct. <- as.numeric(Unemployment_Rate$Oct.)
+Unemployment_Rate$Nov. <- as.numeric(Unemployment_Rate$Nov.)
+Unemployment_Rate$Dec. <- as.numeric(Unemployment_Rate$Dec.)
+
+#Create a new column with the yearly avg.
+Unemployment_Rate$Avg_rate <- rowMeans(Unemployment_Rate[(1:16),(2:13)])
+Unemployment_Rate$Avg_rate <- as.numeric(Unemployment_Rate$Avg_rate)
+
+
+#empty data frame to be filled in with Unemployment rates from 1999-2014
+Unemployment <- data.frame(Years=integer(16), un_rate=integer(16))
+
+Years <- c(1999, 2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014)
+Unemployment$Years <- Years
+Unemployment$un_rate <- Unemployment_Rate$Avg_rate
+
+#adding geomline for unemployment rates from 1999-2014
+graph1 <- graph1 + geom_line(size= 1, data = Unemployment, aes(x=Years, y=un_rate, color = "Unemployment")) +
+  geom_point()
+ylab("Unemployment Rate and Death Rate (per 100k)")
+
+
+#Added interactive-ness to replication graph
+graph2 <- ggplotly(graph1)
+plot_ly(x = time(airmiles), y = airmiles, mode='lines',type='scatter', height=350)
+
+
+#------------------------------------Begin Extension looking at all drug use for specific regions-------------------------
+
+#Bring in data on all drug deaths per region
+all_deaths_ext <- read_excel("~/R/EconProject/Extension_AllDrug.xls")
+
+#Clean for all drug deaths in each region 1999-2019
+all_deaths_ext <- all_deaths_ext[!grepl("Total", all_deaths_ext$Notes),]
+all_deaths_ext$Notes <- NULL
+all_deaths_ext$`Year Code` <- NULL
+all_deaths_ext$`Census Region Code` <- NULL
+all_deaths_ext$Population <- NULL
+all_deaths_ext <- all_deaths_ext[-c(85:136),]
+all_deaths_ext <- all_deaths_ext %>% dplyr::rename(Rate=4)
+all_deaths_ext$`Census Region` <- as.character(all_deaths_ext$`Census Region`)
+
+
+#IMPORTANT DATA FRAMES TO GRAPH WITH OPIOID AND UNEMPLOYMENT FOR EACH REGION
+NE_all_ddeaths <- all_deaths_ext[str_detect(all_deaths_ext$`Census Region`, "Northeast"),]
+MW_all_ddeaths <- all_deaths_ext[str_detect(all_deaths_ext$`Census Region`, "Midwest"),]
+West_all_ddeaths <- all_deaths_ext[str_detect(all_deaths_ext$`Census Region`, "West"),]
+South_all_ddeaths <- all_deaths_ext[str_detect(all_deaths_ext$`Census Region`, "South"),]
+
+
+#Graphing for all drug deaths for each region
+graph_regions <- ggplot(NE_all_ddeaths, aes(Year, Rate, color = "Northeast")) +
+  geom_line(size=1.25) +
+  ggtitle("All Drug Deaths Per Region")
+
+
+#Bring in data on OPIOID drug deaths for each region
+opioid_death_ext <- read_excel("~/R/EconProject/Extensions_OpioidDeaths.xls")
+
+opioid_death_ext <- opioid_death_ext[!grepl("Total", opioid_death_ext$Notes),]
+opioid_death_ext$Notes <- NULL
+opioid_death_ext$`Year Code`<- NULL
+opioid_death_ext$`Census Region Code` <- NULL
+opioid_death_ext$Population <- NULL
+opioid_death_ext <- opioid_death_ext[-c(85:136),]
+opioid_death_ext <- opioid_death_ext %>% dplyr::rename(Rate=4)
+
+#DATA FRAMES FOR EACH REGION
+NE_opdeaths <- opioid_death_ext[str_detect(opioid_death_ext$`Census Region`, "Northeast"),]
+NE_opdeaths <- NE_opdeaths[-c(22:23),]
+MW_opdeaths <- opioid_death_ext[str_detect(opioid_death_ext$`Census Region`, "Midwest"),]
+West_opdeaths <- opioid_death_ext[str_detect(opioid_death_ext$`Census Region`, "West"),]
+South_opdeaths <- opioid_death_ext[str_detect(opioid_death_ext$`Census Region`, "South"),]
+
+
+#Graphing each region
+graph_NE <- ggplot(NE_all_ddeaths, aes(Year, Rate, color = "All Drug Death Rate")) +
+  geom_line(size=1.25) +
+  ggtitle("Northeast Region")
+graph_NE <- graph_NE + geom_line(size=1.25, data= NE_opdeaths, aes(Year, Rate, color = "Opioid Drug Death Rate"))
+
+
+graph_MW <- ggplot(MW_all_ddeaths, aes(Year, Rate, color = "All Drug Death Rate")) +
+  geom_line(size=1.25) +
+  ggtitle("Midwest Region")
+graph_MW <- graph_MW + geom_line(size=1.25, data= MW_opdeaths, aes(Year, Rate, color = "Opioid Death Rate"))
+
+
+graph_West <- ggplot(West_all_ddeaths, aes(Year, Rate, color = "All Drug Death Rate")) +
+  geom_line(size= 1.25) +
+  ggtitle("Western Region")
+graph_West <- graph_West + geom_line(size =1.25, data= West_opdeaths, aes(Year, Rate, color = "Opioid Death Rate"))
+
+
+graph_South <- ggplot(South_all_ddeaths, aes(Year, Rate, color = "All Drug Death Rate")) +
+  geom_line(size=1.25) +
+  ggtitle("Southern Region")
+graph_South <- graph_South + geom_line(size = 1.25, data= South_opdeaths, aes(Year, Rate, color = "Opioid Death Rate"))
+
+#Bring in unemployment rates by region 1999-2019 and clean
+region_unemployment <- read_excel("~/R/econometrics_project/Figure 1 Region Unemployment Rate.xlsx")
+region_unemployment$`Local Area Unemployment Statistics` <- NULL
+region_unemployment <- region_unemployment[-c(1:7),]
+region_unemployment <- region_unemployment %>% dplyr::rename(Year=1)
+region_unemployment <- region_unemployment %>% dplyr::rename('Northeast Region' = 2)
+region_unemployment <- region_unemployment %>% dplyr::rename('Midwest Region'=3)
+region_unemployment <- region_unemployment %>% dplyr::rename('South Region'=4)
+region_unemployment <- region_unemployment %>% dplyr::rename('West Region'=5)
+region_unemployment <-region_unemployment[-(1),]
+region_unemployment$`Northeast Region` <- as.numeric(region_unemployment$`Northeast Region`)
+region_unemployment$`Midwest Region` <- as.numeric(region_unemployment$`Midwest Region`)
+region_unemployment$`South Region` <- as.numeric(region_unemployment$`South Region`)
+region_unemployment$`West Region` <- as.numeric(region_unemployment$`West Region`)
+
+
+Northeast_unemployment <- region_unemployment %>% dplyr::select(Year, 'Northeast Region')
+Northeast_unemployment <- na.omit(Northeast_unemployment)
+NE_unemployment = Northeast_unemployment %>%
+  group_by(Year) %>%
+  summarise(
+    'Northeast Region'= mean(`Northeast Region`)
+  )
+NE_unemployment <- NE_unemployment %>% dplyr::rename(rates=2)
+NE_unemployment$Year <- as.numeric(NE_unemployment$Year)
+NE_unemployment$rates <- as.integer(NE_unemployment$rates)
+
+Midwest_unemployment <- region_unemployment %>% dplyr::select(Year, 'Midwest Region')
+Midwest_unemployment <- na.omit(Midwest_unemployment)
+MW_unemployment = Midwest_unemployment %>%
+  group_by(Year) %>%
+  summarise(
+    'Midwest Region' = mean(`Midwest Region`)
+  )
+MW_unemployment <- MW_unemployment %>% dplyr::rename(rates=2)
+MW_unemployment$Year <- as.numeric(MW_unemployment$Year)
+MW_unemployment$rates <- as.integer(MW_unemployment$rates)
+
+South_unemployment <- region_unemployment %>% dplyr::select(Year, 'South Region')
+South_unemployment <- na.omit(South_unemployment)
+S_unemployment <- South_unemployment %>%
+  group_by(Year) %>%
+  summarise(
+    'South Region' = mean(`South Region`)
+  )
+S_unemployment <- S_unemployment %>% dplyr::rename(rates=2)
+S_unemployment$Year <- as.numeric(S_unemployment$Year)
+S_unemployment$rates <- as.integer(S_unemployment$rates)
+
+West_unemployment <- region_unemployment %>% dplyr::select(Year, 'West Region')
+West_unemployment <- na.omit(West_unemployment)
+W_unemployment <- West_unemployment %>%
+  group_by(Year) %>%
+  summarise(
+    'West Region' = mean(`West Region`)
+  )
+W_unemployment <- W_unemployment %>% dplyr::rename(rates=2)
+W_unemployment$Year <- as.numeric(W_unemployment$Year)
+W_unemployment$rates <- as.integer(W_unemployment$rates)
+
+
+#Adding Unemployment Rates geomline to each region's graph
+
+graph_NE <- ggplot(NE_all_ddeaths, aes(Year, Rate, color = "All Drug Death Rate")) +
+  geom_line(size=1.25) +
+  ggtitle("Northeast Region")
+graph_NE <- graph_NE + geom_line(size=1.25, data= NE_opdeaths, aes(Year, Rate, color = "Opioid Drug Death Rate"))
+graph_NE <- graph_NE + geom_line(size= 1.25, data= NE_unemployment, aes(Year, rates, color = "Unemployment Rate"))
+
+
+graph_MW <- ggplot(MW_all_ddeaths, aes(Year, Rate, color = "All Drug Death Rate")) +
+  geom_line(size=1.25) +
+  ggtitle("Midwest Region")
+graph_MW <- graph_MW + geom_line(size=1.25, data= MW_opdeaths, aes(Year, Rate, color = "Opioid Death Rate"))
+graph_MW <- graph_MW + geom_line(size=1.25, data= MW_unemployment, aes(Year, rates, color= "Unemployment Rate"))
+
+
+graph_South <- ggplot(South_all_ddeaths, aes(Year, Rate, color = "All Drug Death Rate")) +
+  geom_line(size=1.25) +
+  ggtitle("Southern Region")
+graph_South <- graph_South + geom_line(size = 1.25, data= South_opdeaths, aes(Year, Rate, color = "Opioid Death Rate"))
+graph_South <- graph_South + geom_line(size=1.25, data = S_unemployment, aes(Year, rates, color= "Unemployment Rate"))
+
+
+graph_West <- ggplot(West_all_ddeaths, aes(Year, Rate, color = "All Drug Death Rate")) +
+  geom_line(size= 1.25) +
+  ggtitle("Western Region")
+graph_West <- graph_West + geom_line(size =1.25, data= West_opdeaths, aes(Year, Rate, color = "Opioid Death Rate"))
+graph_West <- graph_West + geom_line(size= 1.25, data= W_unemployment, aes(Year, rates, color = "Unemployment Rate"))
